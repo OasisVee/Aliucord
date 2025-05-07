@@ -30,8 +30,13 @@ internal val logger = Logger("PluginDownloader")
 
 private val viewId = View.generateViewId()
 private val repoPattern = Pattern.compile("https?://github\\.com/([A-Za-z0-9\\-_.]+)/([A-Za-z0-9\\-_.]+)")
-private val zipPattern =
-    Pattern.compile("https?://(?:github|raw\\.githubusercontent)\\.com/([A-Za-z0-9\\-_.]+)/([A-Za-z0-9\\-_.]+)/(?:raw|blob)?/?\\w+/(\\w+).zip")
+private val zipPattern = Pattern.compile(
+    "https?://(?:github\\.com|raw\\.githubusercontent\\.com)/" +
+    "([A-Za-z0-9_.-]+)/" +
+    "([A-Za-z0-9_.-]+)/" +
+    "(?:raw|blob)(?:/[A-Za-z0-9_.-]+)+/" +
+    "([A-Za-z0-9_.-]+)\\.zip"
+)
 
 internal class PluginDownloader : CorePlugin(Manifest("PluginDownloader")) {
     override val isRequired = true
@@ -107,8 +112,7 @@ internal class PluginDownloader : CorePlugin(Manifest("PluginDownloader")) {
     override fun stop(context: Context) {}
 
     private fun addEntry(layout: ViewGroup, text: String, onClick: View.OnClickListener) {
-        val replyView =
-            layout.findViewById<View>(Utils.getResId("dialog_chat_actions_edit", "id")) ?: return
+        val replyView = layout.findViewById<View>(Utils.getResId("dialog_chat_actions_edit", "id")) ?: return
         val idx = layout.indexOfChild(replyView)
 
         TextView(layout.context, null, 0, R.i.UiKit_Settings_Item_Icon).run {
