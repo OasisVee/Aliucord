@@ -259,6 +259,8 @@ public class PluginManager {
             new TokenLogin(),
             new UploadSize(),
             new SlashCommandsFix(),
+            new RestartButton(),
+            new AuthorizedAppsCrashFix(),
         };
 
         for (Plugin p : corePlugins) {
