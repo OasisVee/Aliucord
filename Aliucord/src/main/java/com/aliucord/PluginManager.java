@@ -261,6 +261,7 @@ public class PluginManager {
             new SlashCommandsFix(),
             new RestartButton(),
             new AuthorizedAppsCrashFix(),
+            new ValidUser(),
         };
 
         for (Plugin p : corePlugins) {
