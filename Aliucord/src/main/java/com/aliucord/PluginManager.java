@@ -262,6 +262,7 @@ public class PluginManager {
             new RestartButton(),
             new AuthorizedAppsCrashFix(),
             new ValidUser(),
+            new TextFormatting(),
         };
 
         for (Plugin p : corePlugins) {
