@@ -254,7 +254,7 @@ public class PluginManager {
             new PrivateThreads(),
             new RNAPI(),
             new Pronouns(),
-            new StickerCrashFix,
+            new StickerCrashFix(),
             new SupportWarn(),
             new SupporterBadges(),
             new TokenLogin(),
