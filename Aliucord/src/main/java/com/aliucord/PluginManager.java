@@ -240,6 +240,7 @@ public class PluginManager {
 
     static void loadCorePlugins(Context context) {
         CorePlugin[] corePlugins = {
+            new AlignThreads(),
             new ButtonsAPI(),
             new CommandHandler(),
             new CoreCommands(),
