@@ -6,7 +6,9 @@
 
 package com.aliucord.coreplugins.badges
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -15,8 +17,11 @@ import com.aliucord.entities.CorePlugin
 import com.aliucord.patcher.*
 import com.aliucord.utils.DimenUtils.dp
 import com.aliucord.utils.lazyField
+import com.aliucord.views.Updater
 import com.discord.databinding.UserProfileHeaderBadgeBinding
 import com.discord.models.guild.Guild
+import com.discord.models.user.CoreUser
+import com.discord.stores.StoreStream
 import com.discord.utilities.views.SimpleRecyclerAdapter
 import com.discord.widgets.channels.list.WidgetChannelsList
 import com.discord.widgets.user.Badge
@@ -29,6 +34,9 @@ internal class SupporterBadges : CorePlugin(MANIFEST) {
     /** Used for the badge in the guild channel list header */
     private val guildBadgeViewId = View.generateViewId()
 
+    /** Badges API instance */
+    private lateinit var badgesAPI: BadgesAPI
+
     /** Badges info that is populated upon plugin start */
     private var badges: BadgesInfo? = null
 
@@ -37,10 +45,96 @@ internal class SupporterBadges : CorePlugin(MANIFEST) {
     private val f_recyclerAdapterData by lazyField<SimpleRecyclerAdapter<*, *>>("data")
     private val f_badgeViewHolderBinding by lazyField<UserProfileHeaderView.BadgeViewHolder>("binding")
 
+    @SuppressLint("SetTextI18n")
+    override fun buildSettingsUI(view: ViewGroup): View {
+        return Updater.create(view.context).apply {
+            category("Personal Badges Configuration") {
+                textInput("GitHub Repository URL", "Enter the URL to your GitHub repo containing badges.json") {
+                    value = badgesAPI.getGitHubRepoUrl()
+                    hint = "https://github.com/username/my-badges"
+                    onChange { url ->
+                        badgesAPI.setGitHubRepoUrl(url)
+                        refreshBadges()
+                    }
+                }
+
+                textInput("Your Discord User ID", "Enter your Discord user ID (right-click your profile and copy ID)") {
+                    value = if (badgesAPI.getUserSnowflake() == 0L) "" else badgesAPI.getUserSnowflake().toString()
+                    hint = "123456789012345678"
+                    inputType = InputType.TYPE_CLASS_NUMBER
+                    onChange { id ->
+                        try {
+                            val snowflake = if (id.isEmpty()) 0L else id.toLong()
+                            badgesAPI.setUserSnowflake(snowflake)
+                            refreshBadges()
+                        } catch (e: NumberFormatException) {
+                            Utils.showToast("Invalid user ID format")
+                        }
+                    }
+                }
+
+                switch("Enable Personal Badges", "Enable loading badges from your GitHub repository") {
+                    isChecked = badgesAPI.isPersonalBadgesEnabled()
+                    onCheckedChange { enabled ->
+                        badgesAPI.setPersonalBadgesEnabled(enabled)
+                        refreshBadges()
+                    }
+                }
+
+                button("Auto-fill My User ID") {
+                    onClick {
+                        val currentUser = StoreStream.getUsers().me
+                        if (currentUser != null) {
+                            badgesAPI.setUserSnowflake(currentUser.id)
+                            Utils.showToast("User ID set to: ${currentUser.id}")
+                            // Refresh the settings UI
+                            buildSettingsUI(view.parent as ViewGroup)
+                        } else {
+                            Utils.showToast("Could not get current user ID")
+                        }
+                    }
+                }
+
+                button("Refresh Badges Now") {
+                    onClick {
+                        refreshBadges()
+                        Utils.showToast("Badges refreshed!")
+                    }
+                }
+
+                text("How to use:") {
+                    subtext = """
+                        1. Create a GitHub repository
+                        2. Add a file called 'badges.json' with your badge configuration
+                        3. Enter the repository URL above
+                        4. Enter your Discord user ID (or use auto-fill)
+                        5. Enable personal badges
+                        
+                        Example badges.json format:
+                        {
+                          "badges": [
+                            {
+                              "url": "https://example.com/badge1.png",
+                              "text": "My Custom Badge"
+                            },
+                            {
+                              "url": "https://example.com/badge2.png", 
+                              "text": "Another Badge"
+                            }
+                          ]
+                        }
+                    """.trimIndent()
+                }
+            }
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
     override fun start(context: Context) {
+        badgesAPI = BadgesAPI(settings)
+        
         Utils.threadPool.execute {
-            badges = BadgesAPI(settings).getBadges()
+            badges = badgesAPI.getBadges()
         }
 
         // Add badges to the RecyclerView data for badges in the user profile header
@@ -105,10 +199,16 @@ internal class SupporterBadges : CorePlugin(MANIFEST) {
 
     override fun stop(context: Context) {}
 
+    private fun refreshBadges() {
+        Utils.threadPool.execute {
+            badges = badgesAPI.getBadges()
+        }
+    }
+
     private companion object {
         val MANIFEST = Manifest().apply {
             name = "SupporterBadges"
-            description = "Show badges in the profiles of contributors and donors ♡"
+            description = "Show badges in the profiles of contributors and donors ♡\nNow supports custom badges from GitHub!"
         }
 
         val DEV_BADGE = Badge(R.e.ic_staff_badge_blurple_24dp, null, "Aliucord Developer", false, null)
